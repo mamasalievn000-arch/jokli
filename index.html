@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coinverter</title>
+<style>
+:root{--bg:#e9e9eb;--win:#f6f6f6;--line:#dcdcdc;--text:#1d1d1f;--mute:#8a8a8e;--accent:#007aff;--bar:#ececec;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--win:#2a2a2c;--line:#3d3d40;--text:#f2f2f4;--mute:#9a9a9f;--accent:#4aa3ff;--bar:#333335}}
+:root[data-theme="dark"]{--bg:#141416;--win:#2a2a2c;--line:#3d3d40;--text:#f2f2f4;--mute:#9a9a9f;--accent:#4aa3ff;--bar:#333335}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"Helvetica Neue","Segoe UI",Roboto,Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:16px}
+.win{width:100%;max-width:400px;background:var(--win);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.28),0 0 0 1px var(--line);overflow:hidden}
+.title{display:flex;align-items:center;height:38px;padding:0 12px;position:relative;border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:8px}.dots i{width:12px;height:12px;border-radius:50%}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.title b{position:absolute;left:0;right:0;text-align:center;font-weight:400;font-size:15px;pointer-events:none}
+.row{display:flex;align-items:center;gap:10px;padding:0 24px;height:54px;border-bottom:1px solid var(--line);margin:0 0 0 0}
+.row:not(.main){margin:0 14px 0 26px;padding:0}
+.row.main{height:86px;padding:0 24px}
+.flag{width:28px;height:20px;border-radius:2px;flex:none;display:block;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.btc{width:24px;height:24px;border-radius:50%;background:#f7931a;color:#fff;font-weight:700;font-size:14px;display:grid;place-items:center;flex:none}
+.sym{width:34px;color:var(--mute);font-size:14px;flex:none}
+.row input{flex:1;min-width:0;border:0;background:transparent;color:var(--text);text-align:right;font:inherit;font-size:22px;font-weight:300;padding:6px 0;outline:none;border-radius:4px}
+.row.main input{font-size:40px}
+.row input:focus-visible{box-shadow:0 0 0 2px var(--accent)}
+.row.active input{color:var(--accent)}
+.foot{display:flex;align-items:center;justify-content:space-between;height:42px;padding:0 12px;background:var(--bar);font-size:12px;color:var(--mute)}
+.foot button{background:none;border:0;color:var(--mute);font-size:20px;cursor:pointer;width:32px;height:32px;border-radius:6px}
+.foot button:hover,.foot button:focus-visible{color:var(--text);outline:2px solid var(--accent)}
+.settings{display:none;padding:12px 24px 16px;border-top:1px solid var(--line);font-size:13px}
+.settings.open{display:block}
+.settings p{margin:0 0 10px;color:var(--mute);line-height:1.4}
+.rate{display:flex;align-items:center;gap:8px;margin:6px 0}
+.rate label{width:52px}.rate input{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--win);color:var(--text);font:inherit}
+.rate span{color:var(--mute)}
+.reset{margin-top:8px;padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:none;color:var(--text);cursor:pointer;font:inherit}
+</style>
+</head>
+<body>
+<main class="win">
+  <div class="title"><div class="dots"><i></i><i></i><i></i></div><b>Coinverter</b></div>
+  <div id="rows"></div>
+  <div class="foot">
+    <button id="reset-amt" title="Сбросить сумму" aria-label="Сбросить сумму">↻</button>
+    <span id="stamp"></span>
+    <button id="gear" title="Курсы валют" aria-label="Настроить курсы" aria-expanded="false">⚙</button>
+  </div>
+  <section class="settings" id="settings" aria-label="Курсы валют">
+    <p>Курсы заданы вручную: сколько рублей стоит одна единица валюты. Измените их под актуальные значения.</p>
+    <div id="rates"></div>
+    <button class="reset" id="reset-rates">Вернуть курсы по умолчанию</button>
+  </section>
+</main>
+<script>
+var C=[
+ {c:'RUB',s:'₽',r:1,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="7" fill="#fff"/><rect y="7" width="28" height="6.5" fill="#0039a6"/><rect y="13.5" width="28" height="6.5" fill="#d52b1e"/></svg>'},
+ {c:'USD',s:'$',r:42.35,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="20" fill="#fff"/><g fill="#b22234"><rect width="28" height="2.2"/><rect y="4.4" width="28" height="2.2"/><rect y="8.8" width="28" height="2.2"/><rect y="13.2" width="28" height="2.2"/><rect y="17.6" width="28" height="2.4"/></g><rect width="12" height="11" fill="#3c3b6e"/></svg>'},
+ {c:'EUR',s:'€',r:53.9,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="20" fill="#003399"/><g fill="#fc0"><circle cx="14" cy="4.5" r="1"/><circle cx="14" cy="15.5" r="1"/><circle cx="8.5" cy="10" r="1"/><circle cx="19.5" cy="10" r="1"/><circle cx="10" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="10" cy="14" r="1"/><circle cx="18" cy="14" r="1"/></g></svg>'},
+ {c:'GBP',s:'£',r:68.38,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="20" fill="#012169"/><path d="M0 0L28 20M28 0L0 20" stroke="#fff" stroke-width="4"/><path d="M0 0L28 20M28 0L0 20" stroke="#c8102e" stroke-width="1.6"/><path d="M14 0V20M0 10H28" stroke="#fff" stroke-width="6"/><path d="M14 0V20M0 10H28" stroke="#c8102e" stroke-width="3.4"/></svg>'},
+ {c:'JPY',s:'¥',r:0.3922,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="20" fill="#fff"/><circle cx="14" cy="10" r="5.5" fill="#bc002d"/></svg>'},
+ {c:'KGS',s:'сом',r:0.4845,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="20" fill="#e8112d"/><circle cx="14" cy="10" r="5" fill="#ffef00"/><circle cx="14" cy="10" r="2.4" fill="#e8112d"/></svg>'},
+ {c:'KZT',s:'₸',r:0.085,f:'<svg class="flag" viewBox="0 0 28 20"><rect width="28" height="20" fill="#00afca"/><circle cx="14" cy="9" r="3.6" fill="#fec50c"/><path d="M7 16.5h14" stroke="#fec50c" stroke-width="1.6"/></svg>'},
+ {c:'BTC',s:'BTC',r:8000000,f:'<span class="btc">₿</span>'}
+];
+var DEF=C.map(function(x){return x.r});
+var base='RUB',amount='30000',inputs={};
+try{var sv=JSON.parse(localStorage.getItem('coinverter-rates')||'null');if(sv&&sv.length===C.length)sv.forEach(function(v,i){if(v>0)C[i].r=v})}catch(e){}
+function parse(t){var n=parseFloat(String(t).replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0}
+function fmt(n,c){if(!isFinite(n))return '';var d=c==='BTC'?8:2;var s=n.toLocaleString('ru-RU',{maximumFractionDigits:d,useGrouping:false});return s}
+function get(c){return C.filter(function(x){return x.c===c})[0]}
+function render(){
+  var h='';
+  C.forEach(function(x,i){
+    h+='<div class="row'+(i===0?' main':'')+'" data-c="'+x.c+'">'+x.f+'<span class="sym">'+x.s+'</span><input inputmode="decimal" autocomplete="off" aria-label="'+x.c+'" id="in-'+x.c+'"></div>';
+  });
+  document.getElementById('rows').innerHTML=h;
+  C.forEach(function(x){
+    var el=document.getElementById('in-'+x.c);inputs[x.c]=el;
+    el.addEventListener('input',function(){base=x.c;amount=el.value;update()});
+    el.addEventListener('focus',function(){base=x.c;mark();el.select()});
+  });
+  update();
+}
+function mark(){C.forEach(function(x){inputs[x.c].parentNode.classList.toggle('active',x.c===base)})}
+function update(){
+  var rub=parse(amount)*get(base).r;
+  C.forEach(function(x){if(x.c!==base)inputs[x.c].value=fmt(rub/x.r,x.c)});
+  inputs[base].value=amount;
+  mark();
+  var d=new Date();document.getElementById('stamp').textContent='Обновлено '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
+function buildRates(){
+  var h='';
+  C.slice(1).forEach(function(x){h+='<div class="rate"><label for="r-'+x.c+'">1 '+x.c+'</label><span>=</span><input id="r-'+x.c+'" inputmode="decimal" value="'+x.r+'"><span>₽</span></div>'});
+  document.getElementById('rates').innerHTML=h;
+  C.slice(1).forEach(function(x){document.getElementById('r-'+x.c).addEventListener('input',function(e){var v=parse(e.target.value);if(v>0){x.r=v;save();update()}})});
+}
+function save(){try{localStorage.setItem('coinverter-rates',JSON.stringify(C.map(function(x){return x.r})))}catch(e){}}
+document.getElementById('gear').onclick=function(){var s=document.getElementById('settings');var o=s.classList.toggle('open');this.setAttribute('aria-expanded',o)};
+document.getElementById('reset-amt').onclick=function(){base='RUB';amount='30000';update()};
+document.getElementById('reset-rates').onclick=function(){C.forEach(function(x,i){x.r=DEF[i]});save();buildRates();update()};
+render();buildRates();
+</script>
+</body>
+</html>
